@@ -1,9 +1,10 @@
 name: Build DorkHunter PRO APK
 
-on:
+'on':
 workflow_dispatch:
 push:
-branches: [main]
+branches:
+- main
 
 jobs:
 build:
@@ -22,8 +23,8 @@ steps:
   - name: Setup Android SDK
     uses: android-actions/setup-android@v3
 
-  - name: Accept Android SDK Licenses
-    run: yes | sdkmanager --licenses || true
+  - name: Accept Android Licenses
+    run: yes | sdkmanager --licenses
 
   - name: Setup Gradle
     uses: gradle/actions/setup-gradle@v4
@@ -31,8 +32,7 @@ steps:
       gradle-version: '8.9'
 
   - name: Extract project
-    run: |
-      unzip -q DorkHunterPRO-Android.zip -d extracted
+    run: unzip -q DorkHunterPRO-Android.zip -d extracted
 
   - name: Build APK
     run: |
