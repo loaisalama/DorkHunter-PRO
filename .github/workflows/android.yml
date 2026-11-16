@@ -1,46 +1,59 @@
 name: Build DorkHunter PRO APK
 
-'on':
-workflow_dispatch:
-push:
-branches:
-- main
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
 
 jobs:
-build:
-runs-on: ubuntu-latest
+  build:
+    runs-on: ubuntu-latest
 
-steps:
-  - name: Checkout
-    uses: actions/checkout@v4
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v4
 
-  - name: Setup Java
-    uses: actions/setup-java@v5
-    with:
-      distribution: temurin
-      java-version: '17'
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
 
-  - name: Setup Android SDK
-    uses: android-actions/setup-android@v3
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
 
-  - name: Accept Android Licenses
-    run: yes | sdkmanager --licenses
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
 
-  - name: Setup Gradle
-    uses: gradle/actions/setup-gradle@v4
-    with:
-      gradle-version: '8.9'
+      - name: Locate Project
+        id: locate
+        run: |
+          WRAPPER=$(find . -type f -name gradlew -not -path './.git/*' | head -n 1)
 
-  - name: Extract project
-    run: unzip -q DorkHunterPRO-Android.zip -d extracted
+          if [ -z "$WRAPPER" ] && [ -f "DorkHunterPRO-Android.zip" ]; then
+            mkdir -p extracted
+            unzip -q DorkHunterPRO-Android.zip -d extracted
+            WRAPPER=$(find extracted -type f -name gradlew | head -n 1)
+          fi
 
-  - name: Build APK
-    run: |
-      cd extracted/DorkHunterPRO-Android
-      gradle assembleDebug
+          if [ -z "$WRAPPER" ]; then
+            echo "Gradle wrapper not found!"
+            exit 1
+          fi
 
-  - name: Upload APK
-    uses: actions/upload-artifact@v4
-    with:
-      name: DorkHunter-PRO-APK
-      path: extracted/DorkHunterPRO-Android/app/build/outputs/apk/debug/app-debug.apk
+          PROJECT_DIR=$(dirname "$WRAPPER")
+          echo "dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
+
+      - name: Build APK
+        working-directory: ${{ steps.locate.outputs.dir }}
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :app:assembleDebug --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: DorkHunter-PRO-APK
+          path: '**/build/outputs/apk/debug/*.apk'
+          if-no-files-found: error
